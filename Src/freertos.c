@@ -48,8 +48,14 @@
 
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
-osThreadId PlotterTaskHandle;
-osThreadId CanTaskHandle;
+osThreadId imuTaskHandle;
+osThreadId uartTaskHandle;
+osThreadId canTaskHandle;
+osThreadId chassisTaskHandle;
+osThreadId laserTaskHandle;
+osThreadId ledTaskHandle;
+osThreadId buzzerTaskHandle;
+osThreadId plotterTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -57,8 +63,14 @@ osThreadId CanTaskHandle;
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void const * argument);
-extern void plotter_task(void const * argument);
+extern void StartTask02(void const * argument);
+extern void uart_task(void const * argument);
 extern void can_task(void const * argument);
+extern void chassis(void const * argument);
+extern void laser_task(void const * argument);
+extern void led_task(void const * argument);
+extern void buzzer_task(void const * argument);
+extern void plotter_task(void const * argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -110,13 +122,37 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
-  /* definition and creation of PlotterTask */
-  osThreadDef(PlotterTask, plotter_task, osPriorityLow, 0, 128);
-  PlotterTaskHandle = osThreadCreate(osThread(PlotterTask), NULL);
+  /* definition and creation of imuTask */
+  osThreadDef(imuTask, StartTask02, osPriorityRealtime, 0, 256);
+  imuTaskHandle = osThreadCreate(osThread(imuTask), NULL);
 
-  /* definition and creation of CanTask */
-  osThreadDef(CanTask, can_task, osPriorityLow, 0, 128);
-  CanTaskHandle = osThreadCreate(osThread(CanTask), NULL);
+  /* definition and creation of uartTask */
+  osThreadDef(uartTask, uart_task, osPriorityHigh, 0, 128);
+  uartTaskHandle = osThreadCreate(osThread(uartTask), NULL);
+
+  /* definition and creation of canTask */
+  osThreadDef(canTask, can_task, osPriorityHigh, 0, 128);
+  canTaskHandle = osThreadCreate(osThread(canTask), NULL);
+
+  /* definition and creation of chassisTask */
+  osThreadDef(chassisTask, chassis, osPriorityHigh, 0, 256);
+  chassisTaskHandle = osThreadCreate(osThread(chassisTask), NULL);
+
+  /* definition and creation of laserTask */
+  osThreadDef(laserTask, laser_task, osPriorityNormal, 0, 128);
+  laserTaskHandle = osThreadCreate(osThread(laserTask), NULL);
+
+  /* definition and creation of ledTask */
+  osThreadDef(ledTask, led_task, osPriorityNormal, 0, 128);
+  ledTaskHandle = osThreadCreate(osThread(ledTask), NULL);
+
+  /* definition and creation of buzzerTask */
+  osThreadDef(buzzerTask, buzzer_task, osPriorityNormal, 0, 128);
+  buzzerTaskHandle = osThreadCreate(osThread(buzzerTask), NULL);
+
+  /* definition and creation of plotterTask */
+  osThreadDef(plotterTask, plotter_task, osPriorityLow, 0, 256);
+  plotterTaskHandle = osThreadCreate(osThread(plotterTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
