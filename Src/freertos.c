@@ -63,7 +63,7 @@ osThreadId plotterTaskHandle;
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void const * argument);
-extern void StartTask02(void const * argument);
+extern void imu_task(void const * argument);
 extern void uart_task(void const * argument);
 extern void can_task(void const * argument);
 extern void chassis(void const * argument);
@@ -123,7 +123,7 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of imuTask */
-  osThreadDef(imuTask, StartTask02, osPriorityRealtime, 0, 256);
+  osThreadDef(imuTask, imu_task, osPriorityRealtime, 0, 256);
   imuTaskHandle = osThreadCreate(osThread(imuTask), NULL);
 
   /* definition and creation of uartTask */
