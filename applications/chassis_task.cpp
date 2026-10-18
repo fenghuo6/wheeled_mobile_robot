@@ -194,6 +194,11 @@ extern "C" void chassis_task(void const *argument)
                 }
             }
 
+            // 2. 实际功率兜底硬砍（如果功率计反馈快爆表了，不管预测直接砍 10%）
+            if (g_actual_power > (g_power_limit - 2.0f) && sum_tau_sq > 0.01f) {
+                for (int i = 0; i < 4; i++) final_cmd[i] *= 0.9f;
+            }
+
             // 发送最终电流（限幅）
             motor_fl.cmd(sp::limit_max(final_cmd[0], kMaxCurrent));
             motor_fr.cmd(sp::limit_max(final_cmd[1], kMaxCurrent));
