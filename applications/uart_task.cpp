@@ -1,9 +1,14 @@
 #include "cmsis_os.h"
 #include "io/dbus/dbus.hpp"
 
+extern "C" {
+#include "main.h"
+#include "usart.h"
+}
+
 sp::DBus remote(&huart3);
 
-extern "C" void uart_task()
+extern "C" void uart_task(void const *argument)
 {
   remote.request();
 
@@ -21,6 +26,7 @@ extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef * huart, uint16_t 
     remote.request();
   }
 }
+
 extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef * huart)
 {
   if (huart == &huart3) {

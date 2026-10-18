@@ -48,11 +48,8 @@
 
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
-osThreadId imuTaskHandle;
 osThreadId uartTaskHandle;
-osThreadId canTaskHandle;
 osThreadId chassisTaskHandle;
-osThreadId laserTaskHandle;
 osThreadId ledTaskHandle;
 osThreadId buzzerTaskHandle;
 osThreadId plotterTaskHandle;
@@ -63,11 +60,8 @@ osThreadId plotterTaskHandle;
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void const * argument);
-extern void imu_task(void const * argument);
 extern void uart_task(void const * argument);
-extern void can_task(void const * argument);
-extern void chassis(void const * argument);
-extern void laser_task(void const * argument);
+extern void chassis_task(void const * argument);
 extern void led_task(void const * argument);
 extern void buzzer_task(void const * argument);
 extern void plotter_task(void const * argument);
@@ -122,25 +116,13 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
-  /* definition and creation of imuTask */
-  osThreadDef(imuTask, imu_task, osPriorityRealtime, 0, 256);
-  imuTaskHandle = osThreadCreate(osThread(imuTask), NULL);
-
   /* definition and creation of uartTask */
   osThreadDef(uartTask, uart_task, osPriorityHigh, 0, 128);
   uartTaskHandle = osThreadCreate(osThread(uartTask), NULL);
 
-  /* definition and creation of canTask */
-  osThreadDef(canTask, can_task, osPriorityHigh, 0, 128);
-  canTaskHandle = osThreadCreate(osThread(canTask), NULL);
-
   /* definition and creation of chassisTask */
-  osThreadDef(chassisTask, chassis, osPriorityHigh, 0, 256);
+  osThreadDef(chassisTask, chassis_task, osPriorityHigh, 0, 256);
   chassisTaskHandle = osThreadCreate(osThread(chassisTask), NULL);
-
-  /* definition and creation of laserTask */
-  osThreadDef(laserTask, laser_task, osPriorityNormal, 0, 128);
-  laserTaskHandle = osThreadCreate(osThread(laserTask), NULL);
 
   /* definition and creation of ledTask */
   osThreadDef(ledTask, led_task, osPriorityNormal, 0, 128);
