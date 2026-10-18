@@ -71,7 +71,7 @@ extern "C" void chassis_task(void const *argument)
     {
         // 读取裁判系统功率上限
         g_power_limit = pm02.robot_status.chassis_power_limit;
-        if (g_power_limit < 10.0f || g_power_limit > 200.0f) g_power_limit = 40.0f;
+        if (g_power_limit < 10.0f || g_power_limit > 200.0f) g_power_limit = 80.0f;
 
         // 1. 下档失能保护
         if (remote.sw_r == sp::DBusSwitchMode::DOWN)
@@ -192,11 +192,6 @@ extern "C" void chassis_task(void const *argument)
                 for (int i = 0; i < 4; i++) {
                     final_cmd[i] *= scale_K;
                 }
-            }
-
-            // 2. 实际功率兜底硬砍（如果功率计反馈快爆表了，不管预测直接砍 10%）
-            if (g_actual_power > (g_power_limit - 2.0f) && sum_tau_sq > 0.01f) {
-                for (int i = 0; i < 4; i++) final_cmd[i] *= 0.9f;
             }
 
             // 发送最终电流（限幅）
