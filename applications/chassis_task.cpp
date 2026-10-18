@@ -71,7 +71,7 @@ extern "C" void chassis_task(void const *argument)
     {
         // 读取裁判系统功率上限
         g_power_limit = pm02.robot_status.chassis_power_limit;
-        if (g_power_limit < 10.0f || g_power_limit > 200.0f) g_power_limit = 80.0f;
+        if (g_power_limit < 10.0f || g_power_limit > 200.0f) g_power_limit = 60.0f;
 
         // 1. 下档失能保护
         if (remote.sw_r == sp::DBusSwitchMode::DOWN)
