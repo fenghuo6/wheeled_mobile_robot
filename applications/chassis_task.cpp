@@ -110,7 +110,7 @@ extern "C" void chassis_task(void const *argument)
         // 正常模式（中档）
         else if (remote.sw_r == sp::DBusSwitchMode::MID) {
             float vx_raw = remote.ch_lv * kMaxWheelSpeed;
-            float vy_raw = remote.ch_lh * kMaxWheelSpeed;
+            float vy_raw = -remote.ch_lh * kMaxWheelSpeed;
             float omega_raw = remote.ch_lu * kMaxOmega;
 
             vx_target += sp::limit_max(vx_raw - vx_target, kRampStep);
