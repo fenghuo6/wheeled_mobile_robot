@@ -66,6 +66,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     applications/uart_task.cpp
     #applications/laser_task.cpp
     applications/chassis_task.cpp
+    sp_middleware/referee/pm02/pm02.cpp
+sp_middleware/tools/crc/crc.cpp
 )
 
 # Add include paths
