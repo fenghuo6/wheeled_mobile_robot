@@ -79,12 +79,12 @@ extern "C" void chassis_task(void const *argument)
     {
         // 读取裁判系统功率上限
         g_power_limit = pm02.robot_status.chassis_power_limit;
-        if (g_power_limit < 10.0f || g_power_limit > 200.0f) g_power_limit = 60.0f;
+        if (g_power_limit < 10.0f || g_power_limit > 200.0f) g_power_limit = 80.0f;
 
         // 1. 下档失能保护
         if (remote.sw_r == sp::DBusSwitchMode::DOWN)
         {
-            auto_started = false; // 退出自动模式
+            auto_started = false; 
             motor_fl.cmd(0.0f); motor_fr.cmd(0.0f); motor_rl.cmd(0.0f); motor_rr.cmd(0.0f);
             pid_fl.clear(); pid_fr.clear(); pid_rl.clear(); pid_rr.clear();
             vx_target = 0; vy_target = 0; omega_target = 0;
@@ -120,7 +120,6 @@ extern "C" void chassis_task(void const *argument)
         // 3. 上档：自动直线行驶 3 米
         if (remote.sw_r == sp::DBusSwitchMode::UP)
         {
-            // 第一次切入上档时初始化
             if (!auto_started)
             {
                 auto_started = true;
@@ -128,10 +127,7 @@ extern "C" void chassis_task(void const *argument)
                 pid_fl.clear(); pid_fr.clear(); pid_rl.clear(); pid_rr.clear();
             }
 
-            // 判断是否到达目标距离
             float target_v = (auto_distance >= kAutoTargetDistance) ? 0.0f : kAutoTargetSpeed;
-            
-            // 目标轮速 (rad/s)
             float target_w = target_v / kWheelRadius;
 
             w_fl_target = target_w * kDirFL;
@@ -139,29 +135,24 @@ extern "C" void chassis_task(void const *argument)
             w_rl_target = target_w * kDirRL;
             w_rr_target = target_w * kDirRR;
 
-            // ★ 距离积分（根据四个轮子的反馈车速取平均）
-            // 注意：motor.speed 是轮轴的反馈角速度
             float actual_w_avg = (motor_fl.speed * kDirFL + motor_fr.speed * kDirFR + 
                                   motor_rl.speed * kDirRL + motor_rr.speed * kDirRR) / 4.0f;
-            float actual_v = actual_w_avg * kWheelRadius; // m/s
-            auto_distance += actual_v * 0.001f;           // 周期 1ms
+            float actual_v = actual_w_avg * kWheelRadius; 
+            auto_distance += actual_v * 0.001f;           
         }
         // 4. 中档：遥控器手动模式
         else if (remote.sw_r == sp::DBusSwitchMode::MID)
         {
-            auto_started = false; // 切出自动模式
+            auto_started = false; 
 
-            // 摇杆映射
             float vx_raw = remote.ch_lv * kMaxWheelSpeed;
             float vy_raw = -remote.ch_lh * kMaxWheelSpeed;
             float omega_raw = remote.ch_lu * kMaxOmega;
 
-            // 目标速度斜坡
             vx_target += sp::limit_max(vx_raw - vx_target, kRampStep);
             vy_target += sp::limit_max(vy_raw - vy_target, kRampStep);
             omega_target += sp::limit_max(omega_raw - omega_target, kRampStep);
 
-            // 麦轮运动学逆解
             float v_fl = vx_target - vy_target - omega_target * kLxLy;
             float v_fr = vx_target + vy_target + omega_target * kLxLy;
             float v_rl = vx_target + vy_target - omega_target * kLxLy;
@@ -179,13 +170,13 @@ extern "C" void chassis_task(void const *argument)
         pid_rl.calc(w_rl_target, motor_rl.speed);
         pid_rr.calc(w_rr_target, motor_rr.speed);
 
-        // ================== 功率预测（无滤波） ==================
+        // ================== 功率预测（仅为了展示波形） ==================
         sp::RM_Motor *motors[4] = {&motor_fl, &motor_fr, &motor_rl, &motor_rr};
         float sum_tau_omega = 0, sum_tau_sq = 0, sum_omega_sq = 0;
 
         for (int i = 0; i < 4; i++)
         {
-            float tau = motors[i]->torque; // 实际反馈扭矩
+            float tau = motors[i]->torque; 
             float omega = motors[i]->speed;
             
             sum_tau_omega += tau * omega; // 无绝对值
@@ -195,46 +186,32 @@ extern "C" void chassis_task(void const *argument)
 
         float raw_predicted_power = sum_tau_omega + K1 * sum_tau_sq + K2 * sum_omega_sq + K3;
         if (raw_predicted_power < 0.0f) raw_predicted_power = 0.0f;
-
         g_predicted_power = raw_predicted_power;
 
-        // ================== 功率限制核心逻辑 ==================
+        // ================== 发送最终电流（无功率限制，直接输出 PID） ==================
+        motor_fl.cmd(sp::limit_max(pid_fl.out, kMaxCurrent));
+        motor_fr.cmd(sp::limit_max(pid_fr.out, kMaxCurrent));
+        motor_rl.cmd(sp::limit_max(pid_rl.out, kMaxCurrent));
+        motor_rr.cmd(sp::limit_max(pid_rr.out, kMaxCurrent));
+
+        /* 
+        // ================== 功率限制代码已注释 ==================
         float final_cmd[4] = {pid_fl.out, pid_fr.out, pid_rl.out, pid_rr.out};
-        
-        // 提前 5W 开始限制
         float control_power_limit = g_power_limit - 5.0f;
 
         if (g_predicted_power > control_power_limit && sum_tau_sq > 0.01f)
         {
-            float a = K1 * sum_tau_sq;
-            float b = sum_tau_omega;
-            float c = K2 * sum_omega_sq + K3 - control_power_limit;
-            float delta = b * b - 4 * a * c;
-            float scale_K = 1.0f;
-
-            if (delta >= 0) {
-                scale_K = (-b + std::sqrt(delta)) / (2 * a);
-                if (scale_K < 0) scale_K = 0;
-                if (scale_K > 1) scale_K = 1;
-            } else { 
-                scale_K = 0; 
-            }
-
-            for (int i = 0; i < 4; i++) {
-                final_cmd[i] *= scale_K;
-            }
+            // ... 解二次方程代码 ...
         }
-
-        // 实际功率兜底
         if (g_actual_power > (g_power_limit - 2.0f) && sum_tau_sq > 0.01f) {
             for (int i = 0; i < 4; i++) final_cmd[i] *= 0.9f;
         }
-
-        // 发送最终电流（限幅）
         motor_fl.cmd(sp::limit_max(final_cmd[0], kMaxCurrent));
         motor_fr.cmd(sp::limit_max(final_cmd[1], kMaxCurrent));
         motor_rl.cmd(sp::limit_max(final_cmd[2], kMaxCurrent));
         motor_rr.cmd(sp::limit_max(final_cmd[3], kMaxCurrent));
+        // =========================================================
+        */
 
         // 更新波形
         g_plot_data[0] = w_fl_target; g_plot_data[1] = motor_fl.speed;
