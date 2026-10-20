@@ -214,11 +214,17 @@ extern "C" void chassis_task(void const *argument)
         */
 
         // 更新波形
-        g_plot_data[0] = w_fl_target; g_plot_data[1] = motor_fl.speed;
-        g_plot_data[2] = w_fr_target; g_plot_data[3] = motor_fr.speed;
-        g_plot_data[4] = g_predicted_power;
-        g_plot_data[5] = g_actual_power;
-        g_plot_data[6] = g_power_limit;
+        g_plot_data[0] = w_fl_target;        // 左前目标
+        g_plot_data[1] = motor_fl.speed;     // 左前实际
+        
+        g_plot_data[2] = w_fr_target;        // 右前目标
+        g_plot_data[3] = motor_fr.speed;     // 右前实际
+        
+        g_plot_data[4] = w_rl_target;        // 左后目标
+        g_plot_data[5] = motor_rl.speed;     // 左后实际
+        
+        g_plot_data[6] = w_rr_target;        // 右后目标
+        g_plot_data[7] = motor_rr.speed;     // 右后实际
 
         // 底层 CAN 发送
         motor_fl.write(can1.tx_data); motor_fr.write(can1.tx_data);
