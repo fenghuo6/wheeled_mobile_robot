@@ -55,8 +55,9 @@ constexpr float kMaxCurrent = 5.0f;
 constexpr float kRampStep = 0.03f;
 
 // ========== 自动模式相关 ==========
-constexpr float kAutoTargetDistance = 3.0f;
-constexpr float kAutoTargetSpeed = 1.0f;
+constexpr float kAutoTargetDistance = 3.5f; // 总路程
+constexpr float kAutoTargetSpeed = 0.5f;    // 自动模式车速 (m/s)
+constexpr float kAutoDecelDistance = 0.5f;  // 提前 0.5 米开始减速
 
 namespace
 {
@@ -102,6 +103,10 @@ extern "C" void chassis_task(void const *argument)
             motor_rl.write(can1.tx_data);
             motor_rr.write(can1.tx_data);
             can1.send(0x200);
+
+            for(int i=0; i<8; i++) can1.tx_data[i] = 0; // 数据清空
+            can1.send(0x123); // 0x123 是我们约定的急停帧ID
+
             osDelay(1);
             continue;
         }
@@ -137,7 +142,7 @@ extern "C" void chassis_task(void const *argument)
         float w_rl_target = 0.0f;
         float w_rr_target = 0.0f;
 
-        // 3. 上档：自动直线行驶 3 米
+        // 3. 上档：自动直线行驶 3.5 米（带减速缓冲）
         if (remote.sw_r == sp::DBusSwitchMode::UP)
         {
             if (!auto_started)
@@ -150,7 +155,21 @@ extern "C" void chassis_task(void const *argument)
                 pid_rr.clear();
             }
 
-            float target_v = (auto_distance >= kAutoTargetDistance) ? 0.0f : kAutoTargetSpeed;
+            // ★ 核心修改：平滑减速逻辑
+            float target_v = 0.0f;
+            float remaining_distance = kAutoTargetDistance - auto_distance;
+
+            if (remaining_distance > kAutoDecelDistance) {
+                // 距离终点还远，保持最高速度
+                target_v = kAutoTargetSpeed;
+            } else if (remaining_distance > 0.02f) {
+                // 进入减速区（最后0.5m），速度线性下降
+                target_v = kAutoTargetSpeed * (remaining_distance / kAutoDecelDistance);
+            } else {
+                // 到达终点，速度归零
+                target_v = 0.0f;
+            }
+            
             float target_w = target_v / kWheelRadius;
 
             w_fl_target = target_w * kDirFL;
